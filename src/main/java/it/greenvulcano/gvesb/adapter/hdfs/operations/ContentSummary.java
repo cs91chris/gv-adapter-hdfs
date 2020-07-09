@@ -24,7 +24,7 @@ public class ContentSummary extends BaseOperation {
 		super.init(node);
 		
 		src = XMLConfig.get(node, "@pathname");
-		asJson = XMLConfig.getBoolean(node, "@as-json");
+		asJson = XMLConfig.getBoolean(node, "@as-json", true);
 	}
 	
 	@Override

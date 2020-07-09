@@ -22,14 +22,28 @@ package it.greenvulcano.gvesb.adapter.hdfs;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.google.common.base.Supplier;
+
 import it.greenvulcano.configuration.XMLConfig;
 import it.greenvulcano.gvesb.adapter.hdfs.operations.BaseOperation;
+import it.greenvulcano.gvesb.adapter.hdfs.operations.ContentSummary;
+import it.greenvulcano.gvesb.adapter.hdfs.operations.CreateDirs;
+import it.greenvulcano.gvesb.adapter.hdfs.operations.Delete;
+import it.greenvulcano.gvesb.adapter.hdfs.operations.GetFile;
+import it.greenvulcano.gvesb.adapter.hdfs.operations.Move;
+import it.greenvulcano.gvesb.adapter.hdfs.operations.PutFile;
+import it.greenvulcano.gvesb.adapter.hdfs.operations.ReadFile;
+import it.greenvulcano.gvesb.adapter.hdfs.operations.WriteFile;
 import it.greenvulcano.gvesb.buffer.GVBuffer;
 import it.greenvulcano.gvesb.virtual.CallException;
 import it.greenvulcano.gvesb.virtual.CallOperation;
@@ -40,21 +54,35 @@ import it.greenvulcano.gvesb.virtual.OperationKey;
 import it.greenvulcano.util.metadata.PropertiesHandler;
 
 public class HdfsCallOperation implements CallOperation {
-	private OperationKey key = null;
-	private static final String operationsPackage = "it.greenvulcano.gvesb.adapter.hdfs.operations";
+	private OperationKey key = null;	
 	private static final Logger logger = org.slf4j.LoggerFactory.getLogger(HdfsCallOperation.class);
 	
 	protected String workDir = null;
 	protected String endpoint = null;
-	protected NodeList operations = null;
+	
 	protected List<BaseOperation> operationInstances = new ArrayList<>();
 	
 	private HdfsAPI hdfs = null;
 	
+	private static final Map<String, Supplier<BaseOperation>> operationSuppliers;
+	
+	static {
+	    operationSuppliers = new LinkedHashMap<>();	    
+	    operationSuppliers.put(ContentSummary.class.getSimpleName(), ContentSummary::new);
+	    operationSuppliers.put(CreateDirs.class.getSimpleName(), CreateDirs::new);
+	    operationSuppliers.put(Delete.class.getSimpleName(), Delete::new);
+	    operationSuppliers.put(GetFile.class.getSimpleName(), GetFile::new);
+	    operationSuppliers.put(Move.class.getSimpleName(), Move::new);
+	    operationSuppliers.put(PutFile.class.getSimpleName(), PutFile::new);
+	    operationSuppliers.put(ReadFile.class.getSimpleName(), ReadFile::new);
+	    operationSuppliers.put(WriteFile.class.getSimpleName(), WriteFile::new);
+	    
+	}	
+	
 	@Override
 	public void init(Node node) throws InitializationException {
 		try {
-			operations = XMLConfig.getNodeList(node, "*[@type='hdfsOperation']");
+			
 			endpoint = PropertiesHandler.expand(XMLConfig.get(node, "@endpoint"));
 			workDir = PropertiesHandler.expand(XMLConfig.get(node, "@working-directory"));
 			
@@ -62,18 +90,17 @@ public class HdfsCallOperation implements CallOperation {
 				throw new InitializationException("endopoint argument can not be null");
 			}
 			
-			hdfs = new HdfsAPI(endpoint);
+			hdfs = HdfsChannel.getClient(node).orElseThrow(()-> new NoSuchElementException("HDFSClient not found"));
 			
-			for (int i = 0; i < operations.getLength(); i++) {
-				BaseOperation op = null;
-				Node opNode = operations.item(i);
-				String className = XMLConfig.get(opNode, "@class");
+			NodeList configuredOperarions = XMLConfig.getNodeList(node, "*[@type='hdfsOperation']");
+			
+			for (int i = 0; i < configuredOperarions.getLength(); i++) {
 				
-				if (className == null || className == "") {
-					className = operationsPackage + "." + opNode.getNodeName();
-				}
-				
-				op = (BaseOperation) Class.forName(className).newInstance();
+			    
+			        String operationName = configuredOperarions.item(i).getNodeName();
+				BaseOperation op = Optional.ofNullable(operationSuppliers.get(operationName))
+				                           .map(Supplier::get)				                           
+				                           .orElseThrow(()-> new NoSuchElementException("Invalid opereration: "+operationName));
 				op.setClient(hdfs);
 				operationInstances.add(op);
 				op.init(node);
