@@ -388,7 +388,7 @@ public class HDFSRemoteManager extends RemoteManager {
 	@Override
 	public boolean get(String remoteDirectory, String remoteFile, OutputStream outputStream,
 			Map<String, String> optProperties) throws RemoteManagerException {
-		// In questo caso non è possibile copiare il contenuto del file nel GVBuffer ???
+		// In questo caso non possibile copiare il contenuto del file nel GVBuffer ???
 		
 		checkConnected();
 		// READ FROM PROPERTIES propertyDef
