@@ -58,7 +58,6 @@ public class HdfsCallOperation implements CallOperation {
 	private static final Logger logger = org.slf4j.LoggerFactory.getLogger(HdfsCallOperation.class);
 	
 	protected String workDir = null;
-	protected String endpoint = null;
 	
 	protected List<BaseOperation> operationInstances = new ArrayList<>();
 	
@@ -83,27 +82,19 @@ public class HdfsCallOperation implements CallOperation {
 	public void init(Node node) throws InitializationException {
 		try {
 			
-			endpoint = PropertiesHandler.expand(XMLConfig.get(node, "@endpoint"));
 			workDir = PropertiesHandler.expand(XMLConfig.get(node, "@working-directory"));
-			
-			if (endpoint == null) {
-				throw new InitializationException("endopoint argument can not be null");
-			}
-			
 			hdfs = HdfsChannel.getClient(node).orElseThrow(()-> new NoSuchElementException("HDFSClient not found"));
 			
 			NodeList configuredOperarions = XMLConfig.getNodeList(node, "*[@type='hdfsOperation']");
 			
 			for (int i = 0; i < configuredOperarions.getLength(); i++) {
-				
-			    
-			        String operationName = configuredOperarions.item(i).getNodeName();
-				BaseOperation op = Optional.ofNullable(operationSuppliers.get(operationName))
+			        Node operationNode = configuredOperarions.item(i);
+				BaseOperation op = Optional.ofNullable(operationSuppliers.get(operationNode.getNodeName()))
 				                           .map(Supplier::get)				                           
-				                           .orElseThrow(()-> new NoSuchElementException("Invalid opereration: "+operationName));
-				op.setClient(hdfs);
-				operationInstances.add(op);
-				op.init(node);
+				                           .orElseThrow(()-> new NoSuchElementException("Invalid opereration: "+operationNode.getNodeName()));
+				op.setClient(hdfs);				
+				op.init(operationNode);
+				operationInstances.add(op);	
 			}
 		}
 		catch (Exception exc) {

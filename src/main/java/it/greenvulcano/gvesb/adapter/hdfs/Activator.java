@@ -28,11 +28,13 @@ import it.greenvulcano.gvesb.virtual.OperationFactory;
 public class Activator implements BundleActivator {
 	@Override
 	public void start(BundleContext context) throws Exception {
+		HdfsChannel.setup();
 		OperationFactory.registerSupplier("hdfs-call", HdfsCallOperation::new);
 	}
 	
 	@Override
 	public void stop(BundleContext context) throws Exception {
 		OperationFactory.unregisterSupplier("hdfs-call");
+		HdfsChannel.shutdown();
 	}
 }
