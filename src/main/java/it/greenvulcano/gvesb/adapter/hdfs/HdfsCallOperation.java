@@ -27,12 +27,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.google.common.base.Supplier;
 
 import it.greenvulcano.configuration.XMLConfig;
 import it.greenvulcano.gvesb.adapter.hdfs.operations.BaseOperation;
